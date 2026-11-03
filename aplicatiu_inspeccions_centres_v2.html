@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inspeccions de manteniment – Centres educatius</title>
+<style>
+:root{--ink:#183047;--blue:#205b83;--pale:#eef4f8;--line:#d8e1e8;--muted:#627487;--green:#26734d}
+*{box-sizing:border-box}body{margin:0;background:#f3f6f8;color:var(--ink);font:15px/1.45 Arial,sans-serif}
+header{background:#173b57;color:white;padding:22px max(18px,calc((100% - 1050px)/2))}
+header h1{margin:0;font-size:22px;letter-spacing:.04em}header p{margin:5px 0 0;color:#d7e4ed}
+main{max-width:1050px;margin:22px auto;padding:0 16px 60px}.panel,.section{background:white;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:0 2px 8px #173b5708}
+h2{font-size:18px;margin:0 0 14px}.meta{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid #bdcbd6;border-radius:7px;background:white;color:var(--ink)}
+textarea{min-height:78px;resize:vertical}.muted{color:var(--muted);font-size:13px}.section-head{display:flex;justify-content:space-between;gap:10px;align-items:center;cursor:pointer}.section-head h2{margin:0}.count{font-size:12px;color:var(--muted)}
+.item{border-top:1px solid var(--line);padding:17px 0}.item:first-of-type{margin-top:12px}.item h3{font-size:16px;margin:0 0 4px}.item .desc{color:var(--muted);font-size:13px;margin:0 0 12px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.wide{grid-column:1/-1}.photo-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}.photo{width:145px;border:1px solid var(--line);border-radius:8px;padding:6px;position:relative}.photo img{width:100%;height:95px;object-fit:cover;border-radius:5px}.photo input{font-size:11px;padding:5px;margin-top:5px}.photo button{position:absolute;right:8px;top:8px;border:0;border-radius:50%;background:#fff;color:#9b2424;font-size:17px;width:25px;height:25px;cursor:pointer}
+.actions{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:10px;background:#f3f6f8eF;padding:10px 0;z-index:5}
+button,.filelabel{border:0;border-radius:8px;padding:11px 15px;font-weight:700;cursor:pointer;background:var(--blue);color:white}.secondary{background:#e4edf3;color:var(--ink)}.green{background:var(--green)}.filelabel input{display:none}
+progress{width:100%;height:9px;accent-color:var(--green)}
+#printArea{display:none}
+@media(max-width:700px){.meta,.fields{grid-template-columns:1fr}.wide{grid-column:auto}.panel,.section{padding:14px}header h1{font-size:19px}}
+@media print{
+ @page{size:A4;margin:16mm 14mm}
+ body{background:white;color:#172b3a;font-size:10pt}header,.noprint,.actions{display:none!important}main{max-width:none;margin:0;padding:0}
+ #printArea{display:block}.cover{page-break-after:always;min-height:240mm;display:flex;flex-direction:column;justify-content:center;text-align:center}
+ .cover h1{font-size:25pt;color:#173b57}.cover h2{font-size:17pt;margin-top:28px}
+ .print-section{page-break-before:always}.print-item{page-break-inside:avoid;border-bottom:1px solid #ccd6de;padding:12px 0}
+ .print-item h3{font-size:12pt;margin:0 0 5px}.print-item p{margin:4px 0}.print-photos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+ .print-photos figure{margin:0;page-break-inside:avoid}.print-photos img{width:100%;max-height:115mm;object-fit:contain}.print-photos figcaption{font-size:8pt;color:#4b5b67}
+ .print-status{font-weight:bold}.print-muted{color:#536575}.print-summary{page-break-before:always}
+}
+</style></head><body>
+<header><h1>INSPECCIONS DE MANTENIMENT</h1><p>Centres educatius · Formulari tècnic i generació d'informes PDF</p></header>
+<main>
+<div id="formUI">
+ <div class="panel"><h2>Identificació de la inspecció</h2><div class="meta">
+  <div><label for="school">Centre educatiu</label><select id="school" required><option value="">— Selecciona un centre —</option></select></div>
+  <div><label for="date">Data de la inspecció</label><input id="date" type="date" required></div>
+  <div><label for="tech">Tècnic responsable</label><input id="tech" placeholder="Nom i cognoms"></div>
+ </div><p class="muted">Les dades s'utilitzen per generar aquest informe. No es crea un historial centralitzat.</p></div>
+ <div class="panel"><h2>Progrés de la inspecció</h2><progress id="progress" value="0" max="45"></progress><p id="progressText" class="muted">0 de 45 apartats revisats</p></div>
+ <div id="sections"></div>
+ <div class="actions noprint"><button class="green" id="pdf">Generar / imprimir PDF</button><button class="secondary" id="clear">Netejar inspecció</button></div>
+ <p class="muted noprint">Per generar el PDF només són obligatoris el centre educatiu, la data i l’estat de conservació dels 45 apartats. Les descripcions, incidències, prioritats i fotografies són opcionals. Per obtenir el PDF, tria «Desa com a PDF» a la finestra d’impressió del navegador. Mantén aquesta pàgina oberta fins a descarregar el document. Les fotografies s'incorporen al document i no s'envien a cap servidor.</p>
+</div>
+<div id="printArea"></div>
+</main>
+<script>
+const DATA = {"schools": ["CEE Concha Espina", "CEE El Nus", "CFA Bon Pastor", "CFA El Clot", "CFA La Pau", "CFA La Verneda - Sant Martí", "CFA Montserrat Roig", "CFA Palau de Mar", "CFA Pegaso", "CFA Trinitat Vella", "Escola 30 Passos", "Escola Antoni Balmanya", "Escola Antoni Brusi", "Escola Auditori", "Escola Bac de Roda", "Escola Baró de Viver", "Escola BogatellI", "Escola Brasil", "Escola Can Fabra", "Escola Casas", "Escola Catalònia", "Escola Concepció Arenal", "Escola Congrés-Indians", "Escola Doctor Ferran i Clua", "Escola Dovella", "Escola Eduard Marquina", "Escola El Sagrer", "Escola Els Horts", "Escola Els Porxos", "Escola Emili Juncadella", "Escola Eulàlia Bota", "Escola Fluvià", "Escola Ignasi Iglésias", "Escola Joaquim Ruyra", "Escola La Caixa", "Escola La Farigola del Clot", "Escola La Llacuna del Poblenou", "Escola La Maquinista", "Escola La Mar Bella", "Escola La Palmera", "Escola La Pau", "Escola L'Arc de Sant Martí", "Escola L'Arenal de Llevant", "Escola Les Acàcies", "Escola L'Estel", "Escola Mestre Enric Gibert i Camins", "Escola Miralletes", "Escola Octavio Paz", "Escola Pegaso", "Escola Pere IV", "Escola Poblenou", "Escola Pompeu Fabra", "Escola Prim", "Escola Provençals", "Escola Rambleta del Clot", "Escola Sant Martí", "Escola Segre", "Escola Turó Blau", "Escola Vila Olímpica", "ESHOB (Gastronomia i Restauració)", "Institut Bernat Metge", "Institut Caterina Albert", "Institut de Sostenibilitat i Medi Ambient", "Institut del Disseny i Arts Gràfiques", "Institut Escola El Til·ler", "Institut Escola Flor de Maig", "Institut Escola Rec Comtal", "Institut Escola Tramuntana", "Institut Icària", "Institut Infanta Isabel d'Aragó", "Institut ITAEB (Crea TIC)", "Institut ITIC (Media TIC)", "Institut Joan d'Àustria", "Institut Joncar", "Institut l'Alzina", "Institut Maria Espinalt", "Institut Príncep de Viana", "Institut Sagrera Sant Andreu", "LLI El Cascavell", "LLI El Mar", "LLI El Vuit", "OME Sant Andreu", "SE Sant Andreu", "SE Sant Martí"], "sections": [["1", "ELEMENTS CONSTRUCTIUS I ESTRUCTURALS", [["1.1", "Fonaments i estructura", "Pilars, jàsseres, forjats, murs de càrrega, indicis de moviments o deformacions."], ["1.2", "Façanes", "Façanes principals i posteriors, estat d'arrebossats i revestiments, esquerdes, fissures, humitats i elements sortints."], ["1.3", "Tancaments exteriors", "Fusteries, ampits, escopidors i llindes, juntes de dilatació."], ["1.4", "Escales estructurals i baranes", ""], ["1.5", "Cobertes i terrats", "Impermeabilització, aïllament, teules, pendents, embornals, baixants, coronaments, parallamps."], ["1.6", "Línia de vida i elements de seguretat", "Estat dels ancoratges, certificat, accés a coberta."]]], ["2", "DISTRIBUCIÓ INTERIOR I ACABATS", [["2.1", "Envans i compartimentacions interiors", ""], ["2.2", "Paviments interiors", ""], ["2.3", "Sòcols interiors", ""], ["2.4", "Fals sostre o revestiment horitzontal", ""], ["2.5", "Revestiment vertical de paret, enrajolats i pintures", ""]]], ["3", "INSTAL·LACIONS", [["3.1", "Electricitat", "Quadres generals i secundaris, proteccions, cablejat i canalitzacions visibles, endolls, interruptors, posada a terra, SAI…"], ["3.2", "Enllumenat", "Exterior, interior i d'emergència."], ["3.3", "Aigua i fontaneria", "Xarxa de distribució, claus de pas, canonades, vàlvules, aixetes, sanitaris, dutxes i rentamans, fonts, escalfadors, comptadors, acumuladors, fuites i corrosions visibles…"], ["3.4", "Sanejament i evacuació", "Desguassos i baixants; col·lectors i arquetes accessibles; embornals i sifons; bombes d'elevació o trituradores; xarxa d'aigües pluvials; indicis d'embussament, males olors o filtracions."], ["3.5", "Climatització i ventilació", "Calderes i bombes de calor; unitats interiors i exteriors; radiadors i emissors; conductes, reixetes i difusors; ventilació i extracció; termostats i sistemes de control."], ["3.6", "Gas", "Escomesa i comptador; armari de regulació i reguladors; canonades, connexions i vàlvules; aparells receptors; ventilació dels locals."], ["3.7", "Protecció contra incendis", "Extintors i BIE; detecció, alarma i polsadors; senyalització d'emergència; portes tallafoc; enllumenat d'emergència; control de fums, si escau."], ["3.8", "Altres instal·lacions", "Ascensors i plataformes elevadores; telecomunicacions i dades; seguretat i alarma; instal·lacions fotovoltaiques; parallamps; megafonia, timbres i instal·lacions específiques."]]], ["4", "PATIS I ESPAIS EXTERIORS", [["4.1", "Paviments exteriors", "Sots, fissures, desnivells."], ["4.2", "Pistes esportives i equipament", ""], ["4.3", "Zones infantils i sorrals", ""], ["4.4", "Jardineria i arbrat", ""], ["4.5", "Mobiliari exterior", ""], ["4.6", "Tanques, murs i reixes", ""], ["4.7", "Portes d'accés", ""], ["4.8", "Embornals i arquetes", "Pous, canals…"], ["4.9", "Porxos i zones cobertes", ""], ["4.10", "Elements de protecció i senyalització", ""]]], ["5", "FUSTERIES I TANCAMENTS", [["5.1", "Portes exteriors", ""], ["5.2", "Portes interiors", ""], ["5.3", "Portes d'emergència", ""], ["5.4", "Finestres", ""], ["5.5", "Persianes", ""], ["5.6", "Baranes i passamans interiors", ""], ["5.7", "Tendals i proteccions solars", ""], ["5.8", "Claraboies o altres elements", ""]]], ["6", "ACCESSIBILITAT I SEGURETAT", [["6.1", "Accessos principals", "Rampes, escales i ascensors, canvis de nivell, evacuació."]]], ["7", "ESPAIS SINGULARS", [["7.1", "Cuina", ""], ["7.2", "Menjador", ""], ["7.3", "Gimnàs", ""], ["7.4", "Vestuaris", ""], ["7.5", "Sales tècniques", ""], ["7.6", "Magatzems", ""], ["7.7", "Altres", ""]]]]};
+const statusOptions=["Bo","Acceptable","Deficient","No revisat","No procedeix"];
+const $=id=>document.getElementById(id);
+DATA.schools.forEach((s,i)=>{let o=document.createElement("option");o.value=s;o.textContent=s;$("school").append(o)});
+$("date").value=new Date().toISOString().slice(0,10);
+const state={};
+let photoCounter=0;
+function itemKey(code){return "i"+code}
+function build(){
+ const root=$("sections");
+ DATA.sections.forEach(([num,title,items])=>{
+  const sec=document.createElement("section");sec.className="section";
+  const head=document.createElement("div");head.className="section-head";
+  head.innerHTML=`<h2>${num}. ${title}</h2><span class="count">${items.length} apartats ▾</span>`;
+  const body=document.createElement("div");
+  head.onclick=()=>{body.hidden=!body.hidden;head.querySelector(".count").textContent=items.length+" apartats "+(body.hidden?"▸":"▾")};
+  sec.append(head,body);
+  items.forEach(([code,name,desc])=>{
+   const el=document.createElement("div");el.className="item";el.dataset.code=code;
+   el.innerHTML=`<h3>${code} – ${name}</h3>${desc?`<p class="desc">${desc}</p>`:""}
+   <div class="fields">
+    <div><label>Estat de conservació</label><select class="status"><option value="">— Selecciona —</option>${statusOptions.map(x=>`<option>${x}</option>`).join("")}</select></div>
+    <div><label>Prioritat de la incidència (si escau)</label><select class="priority"><option value="">— No especificada —</option><option>Baixa</option><option>Mitjana</option><option>Alta</option><option>Urgent</option></select></div>
+    <div class="wide"><label>Descripció de l'estat actual</label><textarea class="description" placeholder="Descriu l'estat de l'element..."></textarea></div>
+    <div class="wide"><label>Incidències detectades</label><textarea class="incidents" placeholder="Descriu les incidències, si n'hi ha..."></textarea></div>
+    <div class="wide"><label>Fotografies (sense límit)</label><input class="files" type="file" accept="image/*" multiple><div class="photo-row"></div></div>
+   </div>`;
+   body.append(el);
+   el.querySelectorAll("select,textarea").forEach(c=>c.addEventListener("input",updateProgress));
+   el.querySelector(".files").addEventListener("change",e=>addPhotos(el,e.target.files));
+  });
+  root.append(sec);
+ });
+ updateProgress();
+}
+function addPhotos(el,files){
+ const row=el.querySelector(".photo-row");
+ [...files].forEach(file=>{
+  if(!file.type.startsWith("image/"))return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+   const id=++photoCounter,card=document.createElement("div");card.className="photo";card.dataset.src=reader.result;
+   card.innerHTML=`<button type="button" title="Eliminar fotografia">×</button><img alt="Fotografia"><input placeholder="Peu de fotografia (opcional)" aria-label="Peu de fotografia">`;
+   card.querySelector("img").src=reader.result;
+   card.querySelector("button").onclick=()=>{card.remove();updateProgress()};
+   row.append(card);updateProgress();
+  };reader.readAsDataURL(file);
+ });
+ eResetFile(el);
+}
+function eResetFile(el){el.querySelector(".files").value=""}
+function updateProgress(){
+ let total=0,done=0;
+ document.querySelectorAll(".item").forEach(el=>{total++;let s=el.querySelector(".status").value;if(s)done++});
+ $("progress").max=total;$("progress").value=done;$("progressText").textContent=`${done} de ${total} apartats amb estat seleccionat`;
+}
+function val(el,cls){return el.querySelector("."+cls).value.trim()}
+function generate(){
+ if(!$("school").value){alert("Cal seleccionar el centre educatiu.");$("school").focus();return}
+ if(!$("date").value){alert("Cal indicar la data de la inspecció.");$("date").focus();return}
+ const missing=[...document.querySelectorAll(".item")].filter(el=>!val(el,"status"));
+ if(missing.length){
+   alert("Cal seleccionar l'estat de conservació de tots els apartats. En falten "+missing.length+". Pots indicar «No revisat» o «No procedeix» quan correspongui.");
+   missing[0].scrollIntoView({behavior:"smooth",block:"center"});
+   missing[0].querySelector(".status").focus();
+   missing[0].style.outline="2px solid #b45309";
+   setTimeout(()=>{missing[0].style.outline="";},3500);
+   return;
+ }
+ const school=$("school").value,date=$("date").value,tech=$("tech").value.trim();
+ let html=`<div class="cover"><h1>INFORME TÈCNIC</h1><h2>ESTAT DE CONSERVACIÓ I MANTENIMENT</h2><h2>${esc(school)}</h2><p>${esc(date)}${tech?" · "+esc(tech):""}</p><p>Inspecció dels elements constructius, instal·lacions i espais del centre educatiu</p></div>`;
+ let totalPhotos=0,deficient=0,notReviewed=0;
+ DATA.sections.forEach(([num,title,items])=>{
+  html+=`<div class="print-section"><h2>${num}. ${esc(title)}</h2>`;
+  items.forEach(([code,name,desc])=>{
+   const el=document.querySelector(`.item[data-code="${code}"]`),status=val(el,"status"),priority=val(el,"priority"),description=val(el,"description"),incidents=val(el,"incidents");
+   const photos=[...el.querySelectorAll(".photo")];
+   totalPhotos+=photos.length;if(status==="Deficient")deficient++;if(!status||status==="No revisat")notReviewed++;
+   html+=`<div class="print-item"><h3>${code} – ${esc(name)}</h3>${desc?`<p class="print-muted">${esc(desc)}</p>`:""}
+    <p><b>Estat de conservació:</b> <span class="print-status">${esc(status||"No indicat")}</span></p>
+    ${description?`<p><b>Descripció de l'estat actual:</b> ${esc(description)}</p>`:"<p><b>Descripció de l'estat actual:</b> —</p>"}
+    ${incidents?`<p><b>Incidències detectades:</b> ${esc(incidents)}</p>`:"<p><b>Incidències detectades:</b> Cap incidència descrita.</p>"}
+    ${priority?`<p><b>Prioritat:</b> ${esc(priority)}</p>`:""}
+    ${photos.length?`<div class="print-photos">${photos.map((p,i)=>`<figure><img src="${p.dataset.src}"><figcaption>${esc(p.querySelector("input").value||("Fotografia "+(i+1)))}</figcaption></figure>`).join("")}</div>`:""}
+   </div>`;
+  });html+="</div>";
+ });
+ html+=`<div class="print-summary"><h2>RESUM DE LA INSPECCIÓ</h2><p><b>Centre:</b> ${esc(school)}</p><p><b>Data:</b> ${esc(date)}</p><p><b>Tècnic responsable:</b> ${esc(tech||"—")}</p><p><b>Apartats del formulari:</b> 45</p><p><b>Elements classificats com a deficients:</b> ${deficient}</p><p><b>Elements no revisats o sense estat indicat:</b> ${notReviewed}</p><p><b>Fotografies incorporades:</b> ${totalPhotos}</p></div>`;
+ $("printArea").innerHTML=html;
+ $("formUI").style.display="none";window.print();
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+$("pdf").onclick=generate;
+window.onafterprint=()=>{$("formUI").style.display="block"};
+$("clear").onclick=()=>{if(!confirm("Vols esborrar totes les dades i fotografies d'aquesta inspecció?"))return;
+ $("school").value="";$("tech").value="";$("date").value=new Date().toISOString().slice(0,10);
+ document.querySelectorAll(".item").forEach(el=>{el.querySelectorAll("select,textarea").forEach(c=>c.value="");el.querySelector(".photo-row").innerHTML=""});updateProgress()};
+build();
+</script></body></html>
